@@ -60,7 +60,7 @@ guidata(hObject, handles);
 
 % UIWAIT makes guiFracTend wait for user response (see UIRESUME)
 % uiwait(handles.figure1);
-handles.FracTendversion = '1.0' ; 
+handles.FracTendversion = '1.1' ; 
 disp(['FracTend version ', handles.FracTendversion]) ; 
 % Update handles structure
 guidata(hObject, handles);
