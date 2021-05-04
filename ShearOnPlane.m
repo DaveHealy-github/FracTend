@@ -42,8 +42,27 @@ for i = 1:3
     stress(i,i) = pstress(i,1);
 end
 
-%Compute tractions on plane in principal stress direction (Eqs. 6.24-6.26)
-[T,pT] = Cauchy(stress,pstress(1,2),pstress(1,3),pstress(3,2),strike,dip);
+% New
+% Calculate direction cosines of pole to plane
+p = zeros(1,3);
+[p(1),p(2),p(3)] = SphToCart(strike,dip,1);
+
+% Transform pole to plane to  principal stress coordinates
+pT = zeros(1,3);
+for i = 1:3
+    for j = 1:3
+        pT(i) = dCp(i,j)*p(j) + pT(i);
+    end
+end
+
+% Calculate the tractions in principal stress coordinates
+T = zeros(1,3);
+% Compute tractions using Cauchy's law
+for i = 1:3
+    for j = 1:3
+        T(i) = stress(i,j)*pT(j) + T(i);
+    end
+end
 
 %Find the B axis by the cross product of T cross pT and convert to
 %direction cosines (Eq 6.27)
@@ -59,12 +78,10 @@ S(1) = pT(2)*B(3) - pT(3)*B(2);
 S(2) = pT(3)*B(1) - pT(1)*B(3);
 S(3) = pT(1)*B(2) - pT(2)*B(1);
 
-%Convert T, B and S to unit vectors
-rT = sqrt(T(1)*T(1)+T(2)*T(2)+T(3)*T(3));
+%New: Convert B and S to unit vectors
 rB = sqrt(B(1)*B(1)+B(2)*B(2)+B(3)*B(3));
 rS = sqrt(S(1)*S(1)+S(2)*S(2)+S(3)*S(3));
 for i = 1:3
-    T(i) = T(i)/rT;
     B(i) = B(i)/rB;
     S(i) = S(i)/rS;
 end
