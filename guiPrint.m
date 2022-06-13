@@ -26,12 +26,12 @@ function guiPrint(fig, fn)
 % OTHERWISE, ARISING FROM, OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE
 % USE OR OTHER DEALINGS IN THE SOFTWARE.
 
-print(fig, '-dtiff', '-r600', [fn, '.tif']) ;
+print(fig, '-dpng', '-r300', [fn, '.png']) ;
 
-%   add some FracTend metadata to the file 
-t = Tiff([fn, '.tif'], 'r+') ; 
-t.setTag('Artist', 'FracTend version 1.0') ; 
-t.rewriteDirectory() ; 
-t.close() ; 
+% %   add some FracTend metadata to the file 
+% t = Tiff([fn, '.tif'], 'r+') ; 
+% t.setTag('Artist', 'FracTend version 1.0') ; 
+% t.rewriteDirectory() ; 
+% t.close() ; 
 
 end 

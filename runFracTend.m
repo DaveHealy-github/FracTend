@@ -70,9 +70,6 @@ cdS3 = - ( cnS1 * cnS3 + ceS1 * ceS3 ) / cdS1 ;
 if isnan(cdS3) || isinf(cdS3)
     cdS3 = 0 ; 
 end 
-if cdS3 < 0 
-    cdS3 = abs(cdS3) ; 
-end 
 
 %   vs1 cross product vS3 = vS2 - it's orthogonal to both 
 vS2 = cross([cnS1, ceS1, cdS1], [cnS3, ceS3, cdS3]) ;
@@ -85,8 +82,6 @@ cdS2 = vS2(3) ;
 
 [ trendS2rad, plungeS2rad ] = CartToSph(cnS2, ceS2, cdS2) ; 
 [ ~, plungeS3rad ] = CartToSph(cnS3, ceS3, cdS3) ; 
-
-disp([cnS3, ceS3, cdS3]) ; 
 
 trendS2 = trendS2rad * 180 / pi ; 
 plungeS2 = plungeS2rad * 180 / pi ; 
@@ -101,10 +96,10 @@ if abs(plungeS3) < 1e-8
     plungeS3 = 0.0 ; 
 end 
 
-% disp('Stress orientation:') ; 
-% disp(['Sigma1 plunge/trend - ', num2str(plungeS1, '%02.1f'), '/', num2str(trendS1, '%03.1f')]) ;                     
-% disp(['Sigma2 plunge/trend - ', num2str(plungeS2, '%02.1f'), '/', num2str(trendS2, '%03.1f')]) ;                     
-% disp(['Sigma3 plunge/trend - ', num2str(plungeS3, '%02.1f'), '/', num2str(trendS3, '%03.1f')]) ;                     
+disp('Stress orientation:') ; 
+disp(['Sigma1 plunge/trend - ', num2str(plungeS1, '%02.1f'), '/', num2str(trendS1, '%03.1f')]) ;                     
+disp(['Sigma2 plunge/trend - ', num2str(plungeS2, '%02.1f'), '/', num2str(trendS2, '%03.1f')]) ;                     
+disp(['Sigma3 plunge/trend - ', num2str(plungeS3, '%02.1f'), '/', num2str(trendS3, '%03.1f')]) ;                     
 
 %   coefficient of friction & cohesion 
 disp(' ') ; 
@@ -155,7 +150,10 @@ end
 %   calculate tendencies - slip, dilation and frac. suscep
 %   calculate normalised slip tendency (Morris et al., 1996)
 TsMax = max(max( tau ./ sigmaN )) ; 
+TsEffMax = max(max( tau ./ (sigmaN - Pf) )) ; 
+
 Ts = ( tau ./ sigmaN ) / TsMax ; 
+TsEff = ( tau ./ (sigmaN - Pf) ) / TsEffMax ;
 
 %   calculate dilation tendency (Ferril et al., 1999)
 Td =  ( sorted_sigma(1) - sigmaN ) ./ ( sorted_sigma(1) - sorted_sigma(3) ) ;  
@@ -164,8 +162,8 @@ Td =  ( sorted_sigma(1) - sigmaN ) ./ ( sorted_sigma(1) - sorted_sigma(3) ) ;
 %   from Delaney et al.(1988)
 % TD = tau ./ (sigma3 + Pf) ;
 
-%   calculate fracture susceptibility
-Sf = sigmaN - ( tau ./ muStatic ) ;    
+%   calculate fracture susceptibility, MPa
+Sf = (sigmaN - Pf) - ( ( tau - C0) ./ muStatic ) ;    
 
 %   calculate muOA (opening angle), Jolly & Sanderson, 1997
 OA = tau ./ (Pf - sigmaN) ;
@@ -213,13 +211,8 @@ plungeS3rad = pstress(3,3) ;
 [ xS2, yS2 ] = StCoordLine(trendS2rad, plungeS2rad, 1) ;  
 [ xS3, yS3 ] = StCoordLine(trendS3rad, plungeS3rad, 1) ;  
 
-disp('Stress orientation:') ; 
-disp(['Sigma1 plunge/trend - ', num2str(plungeS1, '%02.1f'), '/', num2str(trendS1, '%03.1f')]) ;                     
-disp(['Sigma2 plunge/trend - ', num2str(plungeS2rad*180/pi, '%02.1f'), '/', num2str(trendS2rad*180/pi, '%03.1f')]) ;                     
-disp(['Sigma3 plunge/trend - ', num2str(plungeS3rad*180/pi, '%02.1f'), '/', num2str(trendS3, '%03.1f')]) ;                     
-
 lwPrim = 1 ; 
-sizePoleMarker = 15 ; 
+sizePoleMarker = 30 ; 
 sizeStressMarker = 10 ; 
 ncontours = 20 ; 
 
@@ -232,7 +225,7 @@ if fTsStereo
     f = figure ; 
     set(gcf, 'PaperPositionMode', 'manual') ; 
     set(gcf, 'PaperUnits', 'inches') ; 
-    set(gcf, 'PaperPosition', [ 0.25 0.25 5 5]) ; 
+    set(gcf, 'PaperPosition', [0.25 0.25 6 6]) ; 
 
     contourf(xeqarea, yeqarea, Ts, ncontours, 'EdgeColor', 'none') ; 
     hold on ; 
@@ -240,14 +233,15 @@ if fTsStereo
     plot(xPrim, -yPrim, '-k', 'LineWidth', lwPrim) ;
     plot(xFractures, yFractures, '.r', ...
             'MarkerSize', sizePoleMarker ) ;
-    plot(xS1, yS1, 's', ...
+    hs1 = plot(xS1, yS1, 's', ...
             'MarkerSize', sizeStressMarker, 'MarkerEdgeColor','k', 'MarkerFaceColor', 'w') ; 
-    plot(xS2, yS2, 'd', ...
+    hs2 = plot(xS2, yS2, 'd', ...
             'MarkerSize', sizeStressMarker, 'MarkerEdgeColor','k', 'MarkerFaceColor', 'w') ; 
-    plot(xS3, yS3, '^', ...
+    hs3 = plot(xS3, yS3, '^', ...
             'MarkerSize', sizeStressMarker, 'MarkerEdgeColor','k', 'MarkerFaceColor', 'w') ; 
     hold off ; 
-    title({'Slip tendency, T_s';['n=', num2str(nFractures)]}) ; 
+    legend([hs1, hs2, hs3], '\sigma_1', '\sigma_2', '\sigma_3', 'Location', 'eastoutside') ; 
+    title('Slip tendency, \itT_s') ; 
     view(0, 90) ;  
     axis equal off ;
     xlim([-1.05 1.05]) ; 
@@ -256,8 +250,42 @@ if fTsStereo
     cb = colorbar ; 
     cmocean(('thermal'), ncontours) ; 
     cb.Location = 'SouthOutside' ; 
-    cb.Label.String = 'Normalised slip tendency' ; 
+    cb.Label.String = ['Normalised slip tendency, n=', num2str(nFractures)] ; 
     guiPrint(f, 'FracTend_Ts_stereo') ; 
+    
+    if Pf > 0 
+        f = figure ; 
+        set(gcf, 'PaperPositionMode', 'manual') ; 
+        set(gcf, 'PaperUnits', 'inches') ; 
+        set(gcf, 'PaperPosition', [0.25 0.25 6 6]) ; 
+
+        contourf(xeqarea, yeqarea, TsEff, ncontours, 'EdgeColor', 'none') ; 
+        hold on ; 
+        plot(xPrim, yPrim, '-k', 'LineWidth', lwPrim) ; 
+        plot(xPrim, -yPrim, '-k', 'LineWidth', lwPrim) ;
+        plot(xFractures, yFractures, '.r', ...
+                'MarkerSize', sizePoleMarker ) ;
+        hs1 = plot(xS1, yS1, 's', ...
+                'MarkerSize', sizeStressMarker, 'MarkerEdgeColor','k', 'MarkerFaceColor', 'w') ; 
+        hs2 = plot(xS2, yS2, 'd', ...
+                'MarkerSize', sizeStressMarker, 'MarkerEdgeColor','k', 'MarkerFaceColor', 'w') ; 
+        hs3 = plot(xS3, yS3, '^', ...
+                'MarkerSize', sizeStressMarker, 'MarkerEdgeColor','k', 'MarkerFaceColor', 'w') ; 
+        hold off ; 
+        legend([hs1, hs2, hs3], '\sigma_1', '\sigma_2', '\sigma_3', 'Location', 'eastoutside') ; 
+        title('Slip tendency (effective), \itT_s') ; 
+        view(0, 90) ;  
+        axis equal off ;
+        xlim([-1.05 1.05]) ; 
+        ylim([-1.05 1.05]) ; 
+        caxis([0 1]) ; 
+        cb = colorbar ; 
+        cmocean(('thermal'), ncontours) ; 
+        cb.Location = 'SouthOutside' ; 
+        cb.Label.String = ['Normalised slip tendency, n=', num2str(nFractures)] ; 
+        guiPrint(f, 'FracTend_TsEff_stereo') ;         
+    end 
+    
 end 
 
 if fTdStereo 
@@ -273,14 +301,15 @@ if fTdStereo
     plot(xPrim, -yPrim, '-k', 'LineWidth', lwPrim) ;
     plot(xFractures, yFractures, '.r', ...
             'MarkerSize', sizePoleMarker ) ;
-    plot(xS1, yS1, 's', ...
+    hs1 = plot(xS1, yS1, 's', ...
             'MarkerSize', sizeStressMarker, 'MarkerEdgeColor','k', 'MarkerFaceColor', 'w') ; 
-    plot(xS2, yS2, 'd', ...
+    hs2 = plot(xS2, yS2, 'd', ...
             'MarkerSize', sizeStressMarker, 'MarkerEdgeColor','k', 'MarkerFaceColor', 'w') ; 
-    plot(xS3, yS3, '^', ...
+    hs3 = plot(xS3, yS3, '^', ...
             'MarkerSize', sizeStressMarker, 'MarkerEdgeColor','k', 'MarkerFaceColor', 'w') ; 
     hold off ; 
-    title({'Dilation tendency, T_d';['n=', num2str(nFractures)]}) ; 
+    legend([hs1, hs2, hs3], '\sigma_1', '\sigma_2', '\sigma_3', 'Location', 'eastoutside') ; 
+    title('Dilation tendency, \itT_d') ; 
     view(0, 90) ;  
     axis equal off ;
     xlim([-1.05 1.05]) ; 
@@ -289,7 +318,7 @@ if fTdStereo
     cb = colorbar ; 
     cmocean(('thermal'), ncontours) ; 
     cb.Location = 'SouthOutside' ; 
-    cb.Label.String = 'Dilation tendency' ; 
+    cb.Label.String = ['Dilation tendency, n=', num2str(nFractures)] ; 
     guiPrint(f, 'FracTend_Td_stereo') ; 
 end 
 
@@ -305,15 +334,16 @@ if fSfStereo
     plot(xPrim, yPrim, '-k', 'LineWidth', lwPrim) ; 
     plot(xPrim, -yPrim, '-k', 'LineWidth', lwPrim) ;
     plot(xFractures, yFractures, '.r', 'MarkerSize', sizePoleMarker ) ; 
-    plot(xS1, yS1, 's', ...
+    hs1 = plot(xS1, yS1, 's', ...
             'MarkerSize', sizeStressMarker, 'MarkerEdgeColor','k', 'MarkerFaceColor', 'w') ; 
-    plot(xS2, yS2, 'd', ...
+    hs2 = plot(xS2, yS2, 'd', ...
             'MarkerSize', sizeStressMarker, 'MarkerEdgeColor','k', 'MarkerFaceColor', 'w') ; 
-    plot(xS3, yS3, '^', ...
+    hs3 = plot(xS3, yS3, '^', ...
             'MarkerSize', sizeStressMarker, 'MarkerEdgeColor','k', 'MarkerFaceColor', 'w') ; 
     hold off ; 
     % Flip the colourbar: most likely to reactivate = warmer colours
-    title({'Fracture susceptibility, S_f';['n=', num2str(nFractures)]}) ; 
+    legend([hs1, hs2, hs3], '\sigma_1', '\sigma_2', '\sigma_3', 'Location', 'eastoutside') ; 
+    title('Fracture susceptibility, \itS_f') ; 
     view(0, 90) ;  
     axis equal off ;
     xlim([-1.05 1.05]) ; 
@@ -322,7 +352,7 @@ if fSfStereo
     cmap = cmocean('thermal', ncontours) ;      
     colormap(flipud(cmap)) ; 
     cb.Location = 'SouthOutside' ;  
-    cb.Label.String = '\DeltaP_{f}, MPa' ; 
+    cb.Label.String = ['\DeltaP_{f} (MPa), n=', num2str(nFractures)] ;  
     guiPrint(f, 'FracTend_Sf_stereo') ; 
 end 
 
@@ -343,15 +373,16 @@ if fOAStereo
     plot(xPrim, yPrim, '-k', 'LineWidth', lwPrim) ; 
     plot(xPrim, -yPrim, '-k', 'LineWidth', lwPrim) ;
     plot(xFractures, yFractures, '.r', 'MarkerSize', sizePoleMarker) ;
-    plot(xS1, yS1, 's', ...
+    hs1 = plot(xS1, yS1, 's', ...
             'MarkerSize', sizeStressMarker, 'MarkerEdgeColor','k', 'MarkerFaceColor', 'w') ; 
-    plot(xS2, yS2, 'd', ...
+    hs2 = plot(xS2, yS2, 'd', ...
             'MarkerSize', sizeStressMarker, 'MarkerEdgeColor','k', 'MarkerFaceColor', 'w') ; 
-    plot(xS3, yS3, '^', ...
+    hs3 = plot(xS3, yS3, '^', ...
             'MarkerSize', sizeStressMarker, 'MarkerEdgeColor','k', 'MarkerFaceColor', 'w') ; 
     hold off ; 
+    legend([hs1, hs2, hs3], '\sigma_1', '\sigma_2', '\sigma_3', 'Location', 'eastoutside') ; 
     colormap(cbOA) ; 
-    title({['Opening angle \mu_a for P_f=', num2str(Pf), ' MPa']; ['n=', num2str(nFractures)]}) ; 
+    title(['Opening angle \mu_a for P_f=', num2str(Pf), ' MPa']) ; 
     view(0, 90) ;  
     axis equal off ;
     xlim([-1.05 1.05]) ; 
@@ -359,7 +390,7 @@ if fOAStereo
     caxis([-10 90]) ;
     cb = colorbar ; 
     cb.Location = 'SouthOutside' ; 
-    cb.Label.String = 'Opening angle, \circ' ; 
+    cb.Label.String = ['Opening angle (\circ), n=', num2str(nFractures)] ; 
     guiPrint(f, 'FracTend_OA_stereo') ; 
 end 
 
@@ -423,14 +454,14 @@ fclose(fidData) ;
 %  plot Mohr diagrams, with fractures & contoured stability measures  
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%% 
 
-sizePoleMarker = 10 ; 
+sizePoleMarker = 15 ; 
 
 if fTsMohr 
     %   1. Ts 
     f = figure ; 
     set(gcf, 'PaperPositionMode', 'manual') ; 
     set(gcf, 'PaperUnits', 'inches') ; 
-    set(gcf, 'PaperPosition', [ 0.25 0.25 5 5]) ; 
+    set(gcf, 'PaperPosition', [0.25 0.25 7 5]) ; 
 
     plot([0, sigmaNMohr], [C0, tauMohr], '-r', 'LineWidth', 1) ; 
     hold on ; 
@@ -440,18 +471,63 @@ if fTsMohr
         plot(sigmaNFracture(ifrac), tauFracture(ifrac), '.r', ...
                 'MarkerSize', sizePoleMarker) ; 
     end 
+    hs1 = plot(sigma1, 0, 's', ...
+            'MarkerSize', sizeStressMarker, 'MarkerEdgeColor','k', 'MarkerFaceColor', 'w') ; 
+    hs2 = plot(sigma2, 0, 'd', ...
+            'MarkerSize', sizeStressMarker, 'MarkerEdgeColor','k', 'MarkerFaceColor', 'w') ; 
+    hs3 = plot(sigma3, 0, '^', ...
+            'MarkerSize', sizeStressMarker, 'MarkerEdgeColor','k', 'MarkerFaceColor', 'w') ; 
     hold off ; 
+    legend([hs1, hs2, hs3], '\sigma_1', '\sigma_2', '\sigma_3', ... 
+            'Location', 'northwest', 'Orientation', 'horizontal') ; 
     xlim([0 sigma1*1.05]) ; 
-    ylim([0 sigmad*0.75]) ;
+    ylim([0 sigmad]) ;
     xlabel('Effective normal stress, MPa') ; 
     ylabel('Shear stress, MPa') ; 
-    title({'Slip tendency, T_s';['n=', num2str(nFractures)]}) ; 
+    title('Slip tendency, \itT_s') ; 
     caxis([0 1]) ; 
     cb = colorbar ; 
     cmocean('thermal') ; 
     cb.Location = 'SouthOutside' ; 
-    cb.Label.String = 'Normalised slip tendency' ; 
+    cb.Label.String = ['Normalised slip tendency, n=', num2str(nFractures)] ; 
     guiPrint(f, 'FracTend_Ts_mohr') ; 
+    
+    if Pf > 0.0 
+        f = figure ; 
+        set(gcf, 'PaperPositionMode', 'manual') ; 
+        set(gcf, 'PaperUnits', 'inches') ; 
+        set(gcf, 'PaperPosition', [0.25 0.25 7 5]) ; 
+
+        plot([0, sigmaNMohr], [C0, tauMohr], '-r', 'LineWidth', 1) ; 
+        hold on ; 
+        contourf(sigmaN-Pf, tau, Ts, ncontours, 'EdgeColor', 'none') ; 
+        plotMohr_OA(sigma1, sigma2, sigma3, 1, ':k') ; 
+        plotMohr_OA(sigma1-Pf, sigma2-Pf, sigma3-Pf, 1, '-k') ; 
+        for ifrac = 1:nFractures
+            plot(sigmaNFracture(ifrac)-Pf, tauFracture(ifrac), '.r', ...
+                    'MarkerSize', sizePoleMarker) ; 
+        end 
+        hs1 = plot(sigma1-Pf, 0, 's', ...
+                'MarkerSize', sizeStressMarker, 'MarkerEdgeColor','k', 'MarkerFaceColor', 'w') ; 
+        hs2 = plot(sigma2-Pf, 0, 'd', ...
+                'MarkerSize', sizeStressMarker, 'MarkerEdgeColor','k', 'MarkerFaceColor', 'w') ; 
+        hs3 = plot(sigma3-Pf, 0, '^', ...
+                'MarkerSize', sizeStressMarker, 'MarkerEdgeColor','k', 'MarkerFaceColor', 'w') ; 
+        hold off ; 
+        legend([hs1, hs2, hs3], '\sigma_{1}^''', '\sigma_{2}^''', '\sigma_{3}^''', ... 
+                'Location', 'northeast', 'Orientation', 'horizontal') ; 
+        xlim([0 sigma1*1.05]) ; 
+        ylim([0 sigmad]) ;
+        xlabel('Effective normal stress, MPa') ; 
+        ylabel('Shear stress, MPa') ; 
+        title('Slip tendency (effective), \itT_s') ; 
+        caxis([0 1]) ; 
+        cb = colorbar ; 
+        cmocean('thermal') ; 
+        cb.Location = 'SouthOutside' ; 
+        cb.Label.String = ['Normalised slip tendency, n=', num2str(nFractures)] ; 
+        guiPrint(f, 'FracTend_TsEff_mohr') ;       
+    end    
 end 
 
 if fTdMohr 
@@ -459,7 +535,7 @@ if fTdMohr
     f = figure ; 
     set(gcf, 'PaperPositionMode', 'manual') ; 
     set(gcf, 'PaperUnits', 'inches') ; 
-    set(gcf, 'PaperPosition', [ 0.25 0.25 5 5]) ; 
+    set(gcf, 'PaperPosition', [0.25 0.25 7 5]) ; 
 
     plot([0, sigmaNMohr], [C0, tauMohr], '-r', 'LineWidth', 1) ; 
     hold on ; 
@@ -469,18 +545,63 @@ if fTdMohr
         plot(sigmaNFracture(ifrac), tauFracture(ifrac), '.r', ...
                 'MarkerSize', sizePoleMarker, 'MarkerEdgeColor', 'r', 'MarkerFaceColor', 'r') ; 
     end 
+    hs1 = plot(sigma1, 0, 's', ...
+            'MarkerSize', sizeStressMarker, 'MarkerEdgeColor','k', 'MarkerFaceColor', 'w') ; 
+    hs2 = plot(sigma2, 0, 'd', ...
+            'MarkerSize', sizeStressMarker, 'MarkerEdgeColor','k', 'MarkerFaceColor', 'w') ; 
+    hs3 = plot(sigma3, 0, '^', ...
+            'MarkerSize', sizeStressMarker, 'MarkerEdgeColor','k', 'MarkerFaceColor', 'w') ; 
     hold off ; 
+    legend([hs1, hs2, hs3], '\sigma_1', '\sigma_2', '\sigma_3', ... 
+            'Location', 'northwest', 'Orientation', 'horizontal') ; 
     xlim([0 sigma1*1.05]) ; 
-    ylim([0 sigmad*0.75]) ;
+    ylim([0 sigmad]) ;
     xlabel('Effective normal stress, MPa') ; 
     ylabel('Shear stress, MPa') ; 
-    title({'Dilation tendency, T_d';['n=', num2str(nFractures)]}) ; 
+    title('Dilation tendency, \itT_d') ; 
     caxis([0 1]) ; 
     cb = colorbar ; 
     cmocean('thermal') ; 
     cb.Location = 'SouthOutside' ; 
-    cb.Label.String = 'Dilation tendency' ; 
+    cb.Label.String = ['Dilation tendency, n=', num2str(nFractures)] ; 
     guiPrint(f, 'FracTend_Td_mohr') ; 
+    
+    if Pf > 0.0 
+        f = figure ; 
+        set(gcf, 'PaperPositionMode', 'manual') ; 
+        set(gcf, 'PaperUnits', 'inches') ; 
+        set(gcf, 'PaperPosition', [0.25 0.25 7 5]) ; 
+
+        plot([0, sigmaNMohr], [C0, tauMohr], '-r', 'LineWidth', 1) ; 
+        hold on ; 
+        contourf(sigmaN-Pf, tau, Td, ncontours, 'EdgeColor', 'none') ; 
+        plotMohr_OA(sigma1, sigma2, sigma3, 1, ':k') ; 
+        plotMohr_OA(sigma1-Pf, sigma2-Pf, sigma3-Pf, 1, '-k') ; 
+        for ifrac = 1:nFractures
+            plot(sigmaNFracture(ifrac)-Pf, tauFracture(ifrac), '.r', ...
+                    'MarkerSize', sizePoleMarker, 'MarkerEdgeColor', 'r', 'MarkerFaceColor', 'r') ; 
+        end 
+        hs1 = plot(sigma1-Pf, 0, 's', ...
+                'MarkerSize', sizeStressMarker, 'MarkerEdgeColor','k', 'MarkerFaceColor', 'w') ; 
+        hs2 = plot(sigma2-Pf, 0, 'd', ...
+                'MarkerSize', sizeStressMarker, 'MarkerEdgeColor','k', 'MarkerFaceColor', 'w') ; 
+        hs3 = plot(sigma3-Pf, 0, '^', ...
+                'MarkerSize', sizeStressMarker, 'MarkerEdgeColor','k', 'MarkerFaceColor', 'w') ; 
+        hold off ; 
+        legend([hs1, hs2, hs3], '\sigma_{1}^''', '\sigma_{2}^''', '\sigma_{3}^''', ... 
+                'Location', 'northeast', 'Orientation', 'horizontal') ; 
+        xlim([0 sigma1*1.05]) ; 
+        ylim([0 sigmad]) ;
+        xlabel('Effective normal stress, MPa') ; 
+        ylabel('Shear stress, MPa') ; 
+        title('Dilation tendency (effective), \itT_d') ; 
+        caxis([0 1]) ; 
+        cb = colorbar ; 
+        cmocean('thermal') ; 
+        cb.Location = 'SouthOutside' ; 
+        cb.Label.String = ['Dilation tendency, n=', num2str(nFractures)] ; 
+        guiPrint(f, 'FracTend_TdEff_mohr') ; 
+    end 
 end 
 
 if fSfMohr 
@@ -488,26 +609,35 @@ if fSfMohr
     f = figure ; 
     set(gcf, 'PaperPositionMode', 'manual') ; 
     set(gcf, 'PaperUnits', 'inches') ; 
-    set(gcf, 'PaperPosition', [ 0.25 0.25 5 5]) ; 
+    set(gcf, 'PaperPosition', [0.25 0.25 7 5]) ; 
 
     plot([0, sigmaNMohr], [C0, tauMohr], '-r', 'LineWidth', 1) ; 
     hold on ; 
-    contourf(sigmaN, tau, Sf, ncontours, 'EdgeColor', 'none') ; 
-    plotMohr_OA(sigma1, sigma2, sigma3, 1, '-k') ; 
+    contourf(sigmaN-Pf, tau, Sf, ncontours, 'EdgeColor', 'none') ; 
+    plotMohr_OA(sigma1, sigma2, sigma3, 1, ':k') ; 
+    plotMohr_OA(sigma1-Pf, sigma2-Pf, sigma3-Pf, 1, '-k') ; 
     for ifrac = 1:nFractures
-        plot(sigmaNFracture(ifrac), tauFracture(ifrac), '.r', ...
+        plot(sigmaNFracture(ifrac)-Pf, tauFracture(ifrac), '.r', ...
                 'MarkerSize', sizePoleMarker, 'MarkerEdgeColor', 'r', 'MarkerFaceColor', 'r') ; 
     end 
+    hs1 = plot(sigma1-Pf, 0, 's', ...
+            'MarkerSize', sizeStressMarker, 'MarkerEdgeColor','k', 'MarkerFaceColor', 'w') ; 
+    hs2 = plot(sigma2-Pf, 0, 'd', ...
+            'MarkerSize', sizeStressMarker, 'MarkerEdgeColor','k', 'MarkerFaceColor', 'w') ; 
+    hs3 = plot(sigma3-Pf, 0, '^', ...
+            'MarkerSize', sizeStressMarker, 'MarkerEdgeColor','k', 'MarkerFaceColor', 'w') ; 
     hold off ; 
+    legend([hs1, hs2, hs3], '\sigma_{1}''', '\sigma_{2}''', '\sigma_{3}''', ... 
+            'Location', 'northeast', 'Orientation', 'horizontal') ; 
     xlim([0 sigma1*1.05]) ; 
-    ylim([0 sigmad*0.75]) ;
+    ylim([0 sigmad]) ;
     xlabel('Effective normal stress, MPa') ; 
     ylabel('Shear stress, MPa') ; 
-    title({'Fracture susceptibility, S_f';['n=', num2str(nFractures)]}) ; 
+    title('Fracture susceptibility, \itS_f') ; 
     cb = colorbar ; 
     colormap(flipud(cmocean('thermal'))) ;
     cb.Location = 'SouthOutside' ; 
-    cb.Label.String = '\DeltaP_{f}, MPa' ; 
+    cb.Label.String = ['\DeltaP_{f} (MPa), n=', num2str(nFractures)] ; 
     guiPrint(f, 'FracTend_Sf_mohr') ; 
 end 
 
@@ -516,7 +646,7 @@ if fOAMohr
     f = figure ; 
     set(gcf, 'PaperPositionMode', 'manual') ; 
     set(gcf, 'PaperUnits', 'inches') ; 
-    set(gcf, 'PaperPosition', [ 0.25 0.25 5 5]) ; 
+    set(gcf, 'PaperPosition', [0.25 0.25 7 5]) ; 
 
     %   modified colourbar for opening angle scale 
     cbOA = cmocean('thermal', 18) ; 
@@ -535,15 +665,23 @@ if fOAMohr
         plot(sigmaNFracture(ifrac), tauFracture(ifrac), '.r', ...
                 'MarkerSize', sizePoleMarker, 'MarkerEdgeColor', 'r', 'MarkerFaceColor', 'r') ; 
     end 
+    hs1 = plot(sigma1, 0, 's', ...
+            'MarkerSize', sizeStressMarker, 'MarkerEdgeColor','k', 'MarkerFaceColor', 'w') ; 
+    hs2 = plot(sigma2, 0, 'd', ...
+            'MarkerSize', sizeStressMarker, 'MarkerEdgeColor','k', 'MarkerFaceColor', 'w') ; 
+    hs3 = plot(sigma3, 0, '^', ...
+            'MarkerSize', sizeStressMarker, 'MarkerEdgeColor','k', 'MarkerFaceColor', 'w') ; 
     hold off ; 
+    legend([hs1, hs2, hs3], '\sigma_1', '\sigma_2', '\sigma_3', ... 
+            'Location', 'northeast', 'Orientation', 'horizontal') ; 
     xlim([0 sigma1*1.05]) ; 
-    ylim([0 sigmad*0.75]) ;
+    ylim([0 sigmad]) ;
     xlabel('Effective normal stress, MPa') ; 
     ylabel('Shear stress, MPa') ; 
-    title({['Opening angle \mu_a for P_f=', num2str(Pf), ' MPa']; ['n=', num2str(nFractures)]}) ; 
+    title(['Opening angle \mu_a for P_f=', num2str(Pf), ' MPa']) ; 
     caxis([-10 90]) ;
     cb.Location = 'SouthOutside' ; 
-    cb.Label.String = 'Opening angle, \circ' ; 
+    cb.Label.String = ['Opening angle (\circ), n=', num2str(nFractures)] ; 
     guiPrint(f, 'FracTend_OA_mohr') ; 
 end 
 
